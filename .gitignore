@@ -23,3 +23,14 @@ go.work.sum
 
 # env file
 .env
+
+.idea
+
+Dockerfile
+
+cmd/config.json
+
+.deploy/.terraform*
+.deploy/terraform.*
+.deploy/tfvars.json
+.deploy/slackbot-mcphost.zip

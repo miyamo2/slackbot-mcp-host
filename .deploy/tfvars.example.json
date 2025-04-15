@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "idgen": {
+      "command": "idgen-mcp-server"
+    },
+    "mcp-restaurant-order": {
+      "command": "mcp-restaurant-order"
+    }
+  },
+  "install": {
+    "go": {
+      "packages": [
+        "github.com/syumai/mcp/idgen-mcp-server@latest",
+        "github.com/miyamo2/mcp-restaurant-order@latest"
+      ]
+    }
+  },
+  "llmProviderName": "anthropic",
+  "llmApiKey": "<AnthropicApiKey>",
+  "llmModelName": "claude-3-7-sonnet-20250219",
+  "slackBotToken": "<SlackBotToken>",
+  "slackSigninSecret": "<SlackSigninSecret>",
+  "allowedUsers": [
+    "<UserID1>"
+  ],
+  "gcpProjectID": "<GCPProjectID>",
+  "gcpProjectNumber": "<GCPProjectNumber>",
+  "gcpRegion": "<GCPRegion>"
+}
