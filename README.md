@@ -85,7 +85,7 @@ gcloud services enable iam.googleapis.com run.googleapis.com artifactregistry.go
         "github.com/miyamo2/mcp-restaurant-order@latest"
       ]
     }
-  },                                           # (Optional) MCP servers to pre-install. Supported: go
+  },                                           # (Optional) MCP servers to install at compile time. Supported: go
   "llmProviderName": "anthropic",              # (Required) anthropic | openai | google | ollama
   "llmApiKey": "<LLMApiKey>",                  # (Optional) Only required for anthropic, openai and google
   "llmModelName": "<LLMModelName>",            # (Optional) 
@@ -96,8 +96,7 @@ gcloud services enable iam.googleapis.com run.googleapis.com artifactregistry.go
   ],                                           # (Optional) List of user IDs who can use the bot
   "gcpProjectId": "<GCPProjectId>",            # (Required) GCP project ID
   "gcpProjectNumber": "<GCPProjectNumber>",    # (Required) GCP project number
-  "gcpRegion": "<GCPRegion>",                  # (Required) GCP region
-  "timeoutNs": 1000000000                      # (Optional) Timeout for the bot in nanoseconds. default is 10s.
+  "gcpRegion": "<GCPRegion>"                   # (Required) GCP region
 }
 ```
 
