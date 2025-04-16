@@ -20,10 +20,8 @@ MCP Host as a Slack Bot
 ### Compile-time installation
 
 'slackbot-mcp-host' able to bundle MCP server with Docker image at compile time.
-Supported package managers are as follows:  
 
-
-- [x] go(gomod)
+- [x] go
 - [ ] npm
 - [ ] uv
 - [ ] bun
