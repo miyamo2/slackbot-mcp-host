@@ -17,7 +17,7 @@ variable "registry" {
   nullable  = false
 }
 
-variable "install" {
+variable "bundle" {
   type = object({
     go = optional(object({
       packages = list(string)

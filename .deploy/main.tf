@@ -41,7 +41,7 @@ module "docker" {
   host        = module.gar.host
   credentials = module.gar.credentials
   registry    = module.gar.registry
-  install     = var.install
+  bundle     = var.bundle
   config = {
     mcpServers        = var.mcpServers
     timeoutNs         = var.timeoutNs

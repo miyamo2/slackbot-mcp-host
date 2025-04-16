@@ -7,7 +7,7 @@
       "command": "mcp-restaurant-order"
     }
   },
-  "install": {
+  "bundle": {
     "go": {
       "packages": [
         "github.com/syumai/mcp/idgen-mcp-server@latest",

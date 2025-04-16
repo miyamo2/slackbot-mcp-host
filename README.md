@@ -80,7 +80,7 @@ gcloud services enable iam.googleapis.com run.googleapis.com artifactregistry.go
       "command": "mcp-restaurant-order"
     }
   },                                           # (Required) MCP servers to connect to.
-  "install": {
+  "bundle": {
     "go": {
       "packages": [
         "github.com/syumai/mcp/idgen-mcp-server@latest",
