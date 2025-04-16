@@ -32,22 +32,24 @@ MCP Host as a Slack Bot
 
 See: https://api.slack.com/quickstart
 
-### Login to GCP
+### GCP
+
+#### Login to GCP
 
 ```sh
 gcloud auth application-default login
 ```
 
-### Create a new project
+#### Create a new project
 
 ```sh
 gcloud projects create <PROJECT_ID>
 gcloud config set project <PROJECT_ID>
 ```
 
-### Enable billing
+#### Enable billing
 
-#### See available billing account
+##### See available billing account
 
 ```sh
 gcloud billing accounts list
@@ -58,7 +60,7 @@ OPEN: <TRUE|FALSE>
 MASTER_ACCOUNT_ID: <MASTER_ACCOUNT_ID>
 ```
 
-#### Link billing account to the project
+##### Link billing account to the project
 
 ```sh
 gcloud alpha billing projects link <PROJECT_ID> --billing-account="<BILLING_ACCOUNT_ID>"
