@@ -2,6 +2,10 @@
 
 MCP Host as a Slack Bot
 
+## Demo
+
+![Demo](./.assets/demo.gif)
+
 ## Features
 
 ## Supported MCP Servers
