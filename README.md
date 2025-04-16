@@ -11,7 +11,7 @@ MCP Host as a Slack Bot
 ## Supported MCP Servers
 
 - [x] stdio
-  - [x] binary
+  - [x] single binary
   - [ ] npx
   - [ ] uvx
   - [ ] bunx
