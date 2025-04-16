@@ -8,7 +8,7 @@ MCP Host as a Slack Bot
 
 ## Features
 
-## Supported MCP Servers
+### Supported MCP Servers
 
 - [x] stdio
   - [x] single binary
@@ -17,11 +17,13 @@ MCP Host as a Slack Bot
   - [ ] bunx
 - [ ] sse
 
-## Compile-time installation
+### Compile-time installation
 
-'slackbot-mcp-host' able to bundle MCP server with Docker image at compile time
+'slackbot-mcp-host' able to bundle MCP server with Docker image at compile time.
+Supported package managers are as follows:  
 
-- [x] go
+
+- [x] go(gomod)
 - [ ] npm
 - [ ] uv
 - [ ] bun
@@ -94,9 +96,9 @@ gcloud services enable iam.googleapis.com run.googleapis.com artifactregistry.go
       ]
     }
   },                                           # (Optional) MCP servers to install at compile time. Supported: go
-  "llmProviderName": "anthropic",              # (Required) anthropic | openai | google | ollama
-  "llmApiKey": "<LLMApiKey>",                  # (Optional) Only required for anthropic, openai and google
-  "llmModelName": "<LLMModelName>",            # (Optional) 
+  "llmProviderName": "anthropic",              # (Required) anthropic | openai | google
+  "llmApiKey": "<LLMApiKey>",                  # (Optional) Model to be used
+  "llmModelName": "<LLMModelName>",            # (Optional) API Key for LLM Provider
   "slackBotToken": "<SlackBotToken>",          # (Required) Slack bot token. 'app_mentions:read', 'chat:write' and 'users:read' scopes are required.
   "slackSigninSecret": "<SlackSigninSecret>",  # (Required) Slack Signin Secret
   "allowedUsers": [
