@@ -1,6 +1,6 @@
 .deploy
 .devcontainer
-.asset
+.assets
 .git
 .gitignore
 .github
