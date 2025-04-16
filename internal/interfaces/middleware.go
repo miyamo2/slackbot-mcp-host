@@ -16,15 +16,15 @@ func NewSecretVerify(slackSinginSecret string) echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			verifier, err := slack.NewSecretsVerifier(c.Request().Header, slackSinginSecret)
 			if err != nil {
-				return c.NoContent(http.StatusInternalServerError)
+				return echo.NewHTTPError(http.StatusInternalServerError)
 			}
 			teeReader := io.TeeReader(c.Request().Body, &verifier)
 			body, err := io.ReadAll(teeReader)
 			if err != nil {
-				return c.NoContent(http.StatusInternalServerError)
+				return echo.NewHTTPError(http.StatusInternalServerError)
 			}
 			if err := verifier.Ensure(); err != nil {
-				return c.NoContent(http.StatusUnauthorized)
+				return echo.NewHTTPError(http.StatusUnauthorized)
 			}
 			c.Request().Body = io.NopCloser(bytes.NewBuffer(body))
 			return next(c)
@@ -40,7 +40,7 @@ func NewParseEvent() echo.MiddlewareFunc {
 			teeReader := io.TeeReader(c.Request().Body, &buf)
 			body, err := io.ReadAll(teeReader)
 			if err != nil {
-				return c.NoContent(http.StatusInternalServerError)
+				return echo.NewHTTPError(http.StatusInternalServerError)
 			}
 			c.Request().Body = io.NopCloser(bytes.NewBuffer(body))
 
@@ -68,7 +68,7 @@ func NewAuth(allowedUsers map[string]bool, client *slack.Client) echo.Middleware
 			case *slackevents.AppMentionEvent:
 				user, err := client.GetUserInfo(innerEvent.User)
 				if err != nil || user == nil {
-					return c.NoContent(http.StatusUnauthorized)
+					return echo.NewHTTPError(http.StatusUnauthorized)
 				}
 				if user.IsBot || user.IsAppUser {
 					return nil
@@ -77,7 +77,7 @@ func NewAuth(allowedUsers map[string]bool, client *slack.Client) echo.Middleware
 					return next(c)
 				}
 				if !allowedUsers[user.ID] {
-					return c.NoContent(http.StatusForbidden)
+					return echo.NewHTTPError(http.StatusForbidden)
 				}
 			}
 			return next(c)
@@ -116,5 +116,16 @@ func NewErrorHandler(client *slack.Client) echo.HTTPErrorHandler {
 			}
 		}
 		return
+	}
+}
+
+func NewRateLimit(limit int) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if limit <= 0 {
+				return next(c)
+			}
+			return c.NoContent(http.StatusTooManyRequests)
+		}
 	}
 }

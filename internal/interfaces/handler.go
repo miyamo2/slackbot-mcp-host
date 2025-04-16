@@ -31,8 +31,8 @@ type Session struct {
 	cancel context.CancelFunc
 }
 
-func sessionKey(channel, threadTs string) string {
-	return fmt.Sprintf("%s:%s", channel, threadTs)
+func sessionKey(channel, threadTs, user string) string {
+	return fmt.Sprintf("%s#%s#%s", channel, threadTs, user)
 }
 
 // newSession creates a new session.
@@ -64,7 +64,7 @@ func NewHandler(
 		case slackevents.URLVerification:
 			var res *slackevents.ChallengeResponse
 			if err := json.Unmarshal(body, &res); err != nil {
-				return c.NoContent(http.StatusInternalServerError)
+				return echo.NewHTTPError(http.StatusInternalServerError)
 			}
 			return c.String(http.StatusOK, res.Challenge)
 		case slackevents.CallbackEvent:
@@ -74,20 +74,15 @@ func NewHandler(
 				if prompt == "" {
 					return c.NoContent(http.StatusBadRequest)
 				}
-				var session *Session
-				if v, ok := sessions.Load(sessionKey(innerEvent.Channel, innerEvent.ThreadTimeStamp)); ok {
-					switch v := v.(type) {
-					case *Session:
-						session = v
-					}
-				} else {
-					session = newSession(ctx)
-					sessions.Store(sessionKey(innerEvent.Channel, innerEvent.ThreadTimeStamp), session)
+				if _, ok := sessions.Load(sessionKey(innerEvent.Channel, innerEvent.ThreadTimeStamp, innerEvent.User)); ok {
+					return echo.NewHTTPError(http.StatusConflict)
 				}
+				session := newSession(ctx)
+				sessions.Store(sessionKey(innerEvent.Channel, innerEvent.ThreadTimeStamp, innerEvent.User), session)
 				errCh := make(chan error)
 				go func() {
 					defer close(errCh)
-					defer sessions.Delete(sessionKey(innerEvent.Channel, innerEvent.ThreadTimeStamp))
+					defer sessions.Delete(sessionKey(innerEvent.Channel, innerEvent.ThreadTimeStamp, innerEvent.User))
 					defer session.cancel()
 					select {
 					case errCh <- uc.Execute(session.ctx, innerEvent.Channel, innerEvent.TimeStamp, prompt):
