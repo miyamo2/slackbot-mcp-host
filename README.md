@@ -66,6 +66,8 @@ gcloud alpha billing projects link <PROJECT_ID> --billing-account="<BILLING_ACCO
 gcloud services enable iam.googleapis.com run.googleapis.com artifactregistry.googleapis.com 
 ```
 
+### Terraform
+
 #### Edit terraform variables
 
 ```json5
