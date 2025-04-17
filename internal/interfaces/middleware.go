@@ -223,18 +223,17 @@ func NewSessionMiddleware(rootCtx context.Context) echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			// avoid duplicate requests
-			_, ok = sessions.Load(sessionKey(innerEvent.Channel, innerEvent.ThreadTimeStamp, innerEvent.User))
-			if ok {
-				slog.DebugContext(c.Request().Context(), "request was duplicated", slog.String("channel", innerEvent.Channel), slog.String("threadTs", innerEvent.ThreadTimeStamp), slog.String("user", innerEvent.User))
-				return c.NoContent(http.StatusAccepted)
-			}
 			user, err := userFromContext(c)
 			if err != nil {
 				return err
 			}
 			session := newSession(rootCtx, user)
-			sessions.Store(sessionKey(innerEvent.Channel, innerEvent.ThreadTimeStamp, innerEvent.User), session)
+			_, load := sessions.LoadOrStore(sessionKey(innerEvent.Channel, innerEvent.TimeStamp, innerEvent.User), session)
+			if load {
+				// avoid duplicate requests
+				slog.DebugContext(c.Request().Context(), "request was duplicated", slog.String("channel", innerEvent.Channel), slog.String("threadTs", innerEvent.ThreadTimeStamp), slog.String("user", innerEvent.User))
+				return c.NoContent(http.StatusAccepted)
+			}
 			return next(c)
 		}
 	}

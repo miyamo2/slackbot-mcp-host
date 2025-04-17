@@ -14,8 +14,8 @@ type Session struct {
 	user   *slack.User
 }
 
-func sessionKey(channel, threadTs, user string) string {
-	return fmt.Sprintf("%s#%s#%s", channel, threadTs, user)
+func sessionKey(channel, ts, user string) string {
+	return fmt.Sprintf("%s#%s#%s", channel, ts, user)
 }
 
 // newSession creates a new session.

@@ -49,16 +49,13 @@ func NewHandler(
 			switch innerEvent := event.InnerEvent.Data.(type) {
 			case *slackevents.AppMentionEvent:
 				go func() {
-					untypedSession, ok := sessions.Load(sessionKey(innerEvent.Channel, innerEvent.ThreadTimeStamp, innerEvent.User))
+					untypedSession, ok := sessions.Load(sessionKey(innerEvent.Channel, innerEvent.TimeStamp, innerEvent.User))
 					if !ok {
-						slog.Debug("missing session", slog.String("channel", innerEvent.Channel), slog.String("threadTs", innerEvent.ThreadTimeStamp), slog.String("user", innerEvent.User))
+						slog.Debug("missing session", slog.String("channel", innerEvent.Channel), slog.String("ts", innerEvent.TimeStamp), slog.String("user", innerEvent.User))
 						return
 					}
 					session, _ := untypedSession.(*Session)
 					errCh := make(chan error)
-					defer close(errCh)
-					defer sessions.Delete(sessionKey(innerEvent.Channel, innerEvent.ThreadTimeStamp, innerEvent.User))
-					defer session.cancel()
 
 					user := session.user
 					slog.Info("request received", slog.String("user_id", user.ID), slog.String("event", fmt.Sprintf("%+v", innerEvent)))
@@ -70,11 +67,18 @@ func NewHandler(
 						if err := <-errCh; err != nil {
 							slog.Error("failed to execute", slog.String("error", err.Error()))
 						}
+						close(errCh)
+						session.cancel()
+						sessions.Delete(sessionKey(innerEvent.Channel, innerEvent.TimeStamp, innerEvent.User))
+						return
 					case <-session.ctx.Done():
 						slog.Info("session done")
 						if err := session.ctx.Err(); err != nil {
 							slog.Error(err.Error())
 						}
+						close(errCh)
+						sessions.Delete(sessionKey(innerEvent.Channel, innerEvent.TimeStamp, innerEvent.User))
+						return
 					}
 				}()
 				return c.NoContent(http.StatusAccepted)

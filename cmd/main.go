@@ -281,6 +281,7 @@ const (
 
 // llmProviderFromConfig creates an LLM provider from the given configuration.
 func llmProviderFromConfig(ctx context.Context, cfg Config) (llm.Provider, error) {
+	slog.DebugContext(ctx, "llmProviderFromConfig", slog.String("provider", cfg.LLMProviderName), slog.String("baseURL", cfg.LLMBaseURL), slog.String("modelName", cfg.LLMModelName))
 	switch cfg.LLMProviderName {
 	case llmProviderAnthropic:
 		return anthropic.NewProvider(cfg.LLMApiKey, cfg.LLMBaseURL, cfg.LLMModelName), nil
