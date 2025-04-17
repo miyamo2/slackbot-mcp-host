@@ -126,6 +126,7 @@ func (u *UseCase) execute(sessionCtx context.Context, user, channel, threadTs, p
 	)
 	if err != nil {
 		slog.Error("failed to create message", slog.String("error", err.Error()))
+		u.updateMessage(sessionCtx, user, channel, messageID, "😵‍💫‍")
 		return err
 	}
 
