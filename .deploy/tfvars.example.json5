@@ -1,17 +1,34 @@
 {
   "mcpServers": {
-    "idgen": {
-      "command": "idgen-mcp-server"
+    "mcpServers": {
+      "mcp-restaurant-order": {
+        "command": "mcp-restaurant-order"
+      }
     },
-    "mcp-restaurant-order": {
-      "command": "mcp-restaurant-order"
+    "fetch": {
+      "command": "mcp-server-fetch"
+    },
+    "server-brave-search": {
+      "command": "mcp-server-brave-search",
+      "env": {
+        "BRAVE_API_KEY": "<BraveApiKey>",
+      }
     }
   },
   "bundle": {
     "go": {
       "packages": [
-        "github.com/syumai/mcp/idgen-mcp-server@latest",
         "github.com/miyamo2/mcp-restaurant-order@latest"
+      ]
+    },
+    "uv": {
+      "packages": [
+        "mcp-server-fetch"
+      ]
+    },
+    "bun": {
+      "packages": [
+        "@modelcontextprotocol/server-brave-search@latest"
       ]
     }
   },

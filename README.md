@@ -11,20 +11,40 @@ MCP Host as a Slack Bot
 ### Supported MCP Servers
 
 - [x] stdio
-  - [x] single binary
-  - [ ] npx
-  - [ ] uvx
-  - [ ] bunx
+  - [x] executable file (Must be installed by bundle feature)
 - [ ] sse
 
-### Compile-time installation
+### Bundle MCP Servers
 
 'slackbot-mcp-host' able to bundle MCP server with Docker image at compile time.
 
 - [x] go
 - [ ] npm
-- [ ] uv
-- [ ] bun
+- [x] uv
+- [x] bun
+
+```json
+{
+  "mcpServers": { ... },
+  "bundle": {
+    "go": {
+      "packages": [
+        "github.com/miyamo2/mcp-restaurant-order@latest"
+      ]
+    },
+    "uv": {
+      "packages": [
+        "mcp-server-fetch"
+      ]
+    },
+    "bun": {
+      "packages": [
+        "@modelcontextprotocol/server-brave-search@latest"
+      ]
+    }
+  }
+}
+```
 
 ## Setup
 
@@ -79,21 +99,38 @@ gcloud services enable iam.googleapis.com run.googleapis.com artifactregistry.go
 ```json5
 {
   "mcpServers": {
-    "idgen": {
-      "command": "idgen-mcp-server"
+    "mcpServers": {
+      "mcp-restaurant-order": {
+        "command": "mcp-restaurant-order"
+      }
     },
-    "mcp-restaurant-order": {
-      "command": "mcp-restaurant-order"
+    "fetch": {
+      "command": "mcp-server-fetch"
+    },
+    "server-brave-search": {
+      "command": "mcp-server-brave-search",
+      "env": {
+        "BRAVE_API_KEY": "<BraveApiKey>",
+      }
     }
-  },                                           # (Required) MCP servers to connect to.
+  },                                           # (Required) MCP servers to connect to.,
   "bundle": {
     "go": {
       "packages": [
-        "github.com/syumai/mcp/idgen-mcp-server@latest",
         "github.com/miyamo2/mcp-restaurant-order@latest"
       ]
+    },
+    "uv": {
+      "packages": [
+        "mcp-server-fetch"
+      ]
+    },
+    "bun": {
+      "packages": [
+        "@modelcontextprotocol/server-brave-search@latest"
+      ]
     }
-  },                                           # (Optional) MCP servers to install at compile time. Supported: go
+  },                                           # (Optional) MCP servers to install at compile time. Supported: go, uv, bun
   "llmProviderName": "anthropic",              # (Required) anthropic | openai | google
   "llmApiKey": "<LLMApiKey>",                  # (Optional) Model to be used
   "llmModelName": "<LLMModelName>",            # (Optional) API Key for LLM Provider

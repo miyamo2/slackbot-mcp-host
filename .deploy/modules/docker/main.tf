@@ -23,7 +23,10 @@ provider "docker" {
 
 resource "local_file" "dockerfile" {
   content = templatefile("${path.module}/Dockerfile.tpl", {
-    go_installs = var.bundle.go.packages
+    go_installs  = var.bundle.go.packages
+    uv_installs  = var.bundle.uv.packages
+    bun_installs = var.bundle.bun.packages
+    npm_installs = var.bundle.npm.packages
   })
   filename = "../Dockerfile"
 }

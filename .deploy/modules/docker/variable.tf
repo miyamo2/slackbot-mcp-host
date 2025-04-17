@@ -24,9 +24,33 @@ variable "bundle" {
       }), {
       packages = []
     })
+    uv = optional(object({
+      packages = list(string)
+      }), {
+      packages = []
+    })
+    bun = optional(object({
+      packages = list(string)
+      }), {
+      packages = []
+    })
+    npm = optional(object({
+      packages = list(string)
+      }), {
+      packages = []
+    })
   })
   default = {
     go = {
+      packages = []
+    }
+    uv = {
+      packages = []
+    }
+    bun = {
+      packages = []
+    }
+    npm = {
       packages = []
     }
   }
