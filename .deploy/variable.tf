@@ -85,5 +85,15 @@ variable "gcpRegion" {
   default = "asia-northeast1"
 }
 
+variable "rateLimit" {
+  type = object({
+    enable    = optional(bool, false)
+    limit     = optional(number, 20)
+    burst     = optional(number)
+    expiresIn = optional(number, 300)
+  })
+  nullable = true
+}
+
 
 

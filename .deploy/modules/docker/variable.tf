@@ -48,6 +48,12 @@ variable "config" {
     slackSigninSecret = string
     allowedUsers      = list(string)
     gcpProjectID      = string
+    rateLimit = optional(object({
+      enable    = optional(bool, false)
+      limit     = optional(number, 20)
+      burst     = optional(number)
+      expiresIn = optional(number, 300)
+    }))
   })
   sensitive = true
 }

@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"sync"
 	"unicode"
 )
 
@@ -22,47 +21,26 @@ type UseCase interface {
 	// 	- channel: The Slack channel ID where the message will be posted.
 	// 	- threadTs: The timestamp of the thread to reply to.
 	// 	- prompt: The prompt to send to the LLM.
-	Execute(sessionCtx context.Context, channel, threadTs, prompt string) error
+	Execute(sessionCtx context.Context, user, channel, threadTs, prompt string) error
 }
-
-// Session represents a session for handling Slack events.
-type Session struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-}
-
-func sessionKey(channel, threadTs, user string) string {
-	return fmt.Sprintf("%s#%s#%s", channel, threadTs, user)
-}
-
-// newSession creates a new session.
-func newSession(ctx context.Context) *Session {
-	ctx, cancel := context.WithCancel(ctx)
-	return &Session{
-		ctx:    ctx,
-		cancel: cancel,
-	}
-}
-
-var sessions sync.Map
 
 // NewHandler returns handler for Slack events.
 //
 //   - ctx: The context representing the application's lifecycle.
 //   - uc: The use-case for handling Slack messages and LLM interactions.
 func NewHandler(
-	ctx context.Context,
 	uc UseCase,
 ) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		body, err := io.ReadAll(c.Request().Body)
-		if err != nil {
-			return err
-		}
 		event := c.Get("event").(slackevents.EventsAPIEvent)
+
 		switch event.Type {
 		case slackevents.URLVerification:
 			var res *slackevents.ChallengeResponse
+			body, err := io.ReadAll(c.Request().Body)
+			if err != nil {
+				return err
+			}
 			if err := json.Unmarshal(body, &res); err != nil {
 				return echo.NewHTTPError(http.StatusInternalServerError)
 			}
@@ -70,22 +48,25 @@ func NewHandler(
 		case slackevents.CallbackEvent:
 			switch innerEvent := event.InnerEvent.Data.(type) {
 			case *slackevents.AppMentionEvent:
-				prompt := promptFromMention(innerEvent)
-				if prompt == "" {
-					return c.NoContent(http.StatusBadRequest)
-				}
-				if _, ok := sessions.Load(sessionKey(innerEvent.Channel, innerEvent.ThreadTimeStamp, innerEvent.User)); ok {
-					return echo.NewHTTPError(http.StatusConflict)
-				}
-				session := newSession(ctx)
-				sessions.Store(sessionKey(innerEvent.Channel, innerEvent.ThreadTimeStamp, innerEvent.User), session)
-				errCh := make(chan error)
 				go func() {
+					untypedSession, ok := sessions.Load(sessionKey(innerEvent.Channel, innerEvent.ThreadTimeStamp, innerEvent.User))
+					if !ok {
+						slog.Debug("missing session", slog.String("channel", innerEvent.Channel), slog.String("threadTs", innerEvent.ThreadTimeStamp), slog.String("user", innerEvent.User))
+						return
+					}
+					session, _ := untypedSession.(*Session)
+					errCh := make(chan error)
 					defer close(errCh)
 					defer sessions.Delete(sessionKey(innerEvent.Channel, innerEvent.ThreadTimeStamp, innerEvent.User))
 					defer session.cancel()
+
+					user := session.user
+					slog.Info("request received", slog.String("user_id", user.ID), slog.String("event", fmt.Sprintf("%+v", innerEvent)))
+
+					prompt := promptFromMention(innerEvent)
+
 					select {
-					case errCh <- uc.Execute(session.ctx, innerEvent.Channel, innerEvent.TimeStamp, prompt):
+					case errCh <- uc.Execute(session.ctx, innerEvent.User, innerEvent.Channel, innerEvent.TimeStamp, prompt):
 						if err := <-errCh; err != nil {
 							slog.Error("failed to execute", slog.String("error", err.Error()))
 						}
@@ -109,6 +90,12 @@ func promptFromMention(event *slackevents.AppMentionEvent) string {
 		return unicode.IsSpace(r)
 	})
 	if index == -1 || index+1 >= len(event.Text) {
+		return ""
+	}
+	prompt := event.Text[index+1:]
+	if strings.TrimFunc(prompt, func(r rune) bool {
+		return unicode.IsSpace(r)
+	}) == "" {
 		return ""
 	}
 	return event.Text[index+1:]

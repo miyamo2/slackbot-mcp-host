@@ -40,12 +40,20 @@ type Config struct {
 	AllowedUsers     []string                   `json:"allowedUsers"`
 	Port             int                        `json:"port"`
 	GCPProjectId     string                     `json:"gcpProjectId"`
+	RateLimit        RateLimitConfig            `json:"rateLimit"`
 }
 
 type MCPServerConfig struct {
 	Command string         `json:"command"`
 	Args    []string       `json:"args"`
 	Env     map[string]any `json:"env"`
+}
+
+type RateLimitConfig struct {
+	Enable    bool    `json:"enable"`
+	Limit     float64 `json:"limit"`
+	Burst     int     `json:"burst"`
+	ExpressIn int64   `json:"expiresIn"`
 }
 
 func main() {
@@ -121,11 +129,21 @@ func main() {
 	e.GET("/health", func(c echo.Context) error {
 		return c.String(http.StatusOK, "OK")
 	})
-	e.POST("/slack/events",
-		interfaces.NewHandler(ctx, app.NewUseCase(duration, bot, llmProvider, allTools, clients)),
+
+	middlewares := []echo.MiddlewareFunc{
 		interfaces.NewSecretVerify(cfg.SackSinginSecret),
 		interfaces.NewParseEvent(),
-		interfaces.NewAuth(alowedUsers, bot))
+		interfaces.NewAuth(alowedUsers, bot),
+		interfaces.NewSessionMiddleware(ctx),
+	}
+	if cfg.RateLimit.Enable {
+		middlewares = append(middlewares,
+			interfaces.NewRateLimiter(
+				cfg.RateLimit.Limit, cfg.RateLimit.Burst, time.Duration(cfg.RateLimit.ExpressIn)*time.Second))
+	}
+	e.POST("/slack/events",
+		interfaces.NewHandler(app.NewUseCase(duration, bot, llmProvider, allTools, clients)),
+		middlewares...)
 	e.HTTPErrorHandler = interfaces.NewErrorHandler(bot)
 
 	errChan := make(chan error, 1)

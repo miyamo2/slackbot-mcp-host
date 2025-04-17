@@ -9,10 +9,15 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcphost/pkg/history"
 	"github.com/mark3labs/mcphost/pkg/llm"
+	"github.com/pkg/errors"
 	"github.com/slack-go/slack"
 	"log/slog"
 	"strings"
 	"time"
+)
+
+var (
+	ErrEmptyPrompt = errors.New("empty prompt")
 )
 
 // SlackClient is an interface that defines the methods for posting and updating messages in Slack.
@@ -53,9 +58,13 @@ func NewUseCase(
 //   - channel: The Slack channel ID where the message will be posted.
 //   - threadTs: The timestamp of the thread to reply to.
 //   - prompt: The prompt to send to the LLM.
-func (u *UseCase) Execute(sessionCtx context.Context, channel, threadTs, prompt string) error {
+func (u *UseCase) Execute(sessionCtx context.Context, user, channel, threadTs, prompt string) error {
 	slog.Info("BEGIN UseCase.Execute", slog.String("channel", channel), slog.String("threadTs", threadTs), slog.String("prompt", prompt))
 	defer slog.Info("END UseCase.Execute", slog.String("channel", channel))
+
+	if prompt == "" {
+		return ErrEmptyPrompt
+	}
 	messages := []history.HistoryMessage{
 		{
 			Role: "user",
@@ -65,17 +74,17 @@ func (u *UseCase) Execute(sessionCtx context.Context, channel, threadTs, prompt 
 			}},
 		},
 	}
-	return u.execute(sessionCtx, channel, threadTs, prompt, messages)
+	return u.execute(sessionCtx, user, channel, threadTs, prompt, messages)
 }
 
 var durationForLLMRateLimitExceeded = time.Minute + 30*time.Second
 
 // execute handles the LLM interactions and Slack message updates.
 // this method is called recursively to handle tool results.
-func (u *UseCase) execute(sessionCtx context.Context, channel, threadTs, prompt string, messages []history.HistoryMessage) error {
+func (u *UseCase) execute(sessionCtx context.Context, user, channel, threadTs, prompt string, messages []history.HistoryMessage) error {
 	slog.Info("BEGIN UseCase.execute", slog.String("channel", channel), slog.String("threadTs", threadTs), slog.String("prompt", prompt))
 	defer slog.Info("END UseCase.execute", slog.String("channel", channel))
-	messageID, err := u.postMessage(sessionCtx, channel, "⌛ Thinking...", threadTs)
+	messageID, err := u.postMessage(sessionCtx, user, channel, "⌛ Thinking...", threadTs)
 	if err != nil {
 		return err
 	}
@@ -107,7 +116,7 @@ func (u *UseCase) execute(sessionCtx context.Context, channel, threadTs, prompt 
 		retry.DelayType(func(n uint, err error, config *retry.Config) time.Duration {
 			duration := retry.BackOffDelay(n, err, config)
 			if err != nil && strings.Contains(err.Error(), "rate_limit_error") {
-				messageID, _ = u.updateMessage(sessionCtx, channel, messageID, fmt.Sprintf("⌛ Rate limit exceeded. waiting for %d nanoseconds...", duration))
+				messageID, _ = u.updateMessage(sessionCtx, user, channel, messageID, fmt.Sprintf("⌛ Rate limit exceeded. waiting for %d nanoseconds...", duration))
 				if duration < durationForLLMRateLimitExceeded {
 					return durationForLLMRateLimitExceeded
 				}
@@ -127,7 +136,7 @@ func (u *UseCase) execute(sessionCtx context.Context, channel, threadTs, prompt 
 
 	// Add text content
 	if message.GetContent() != "" {
-		messageID, err = u.updateMessage(sessionCtx, channel, messageID, message.GetContent())
+		messageID, err = u.updateMessage(sessionCtx, user, channel, messageID, message.GetContent())
 		messageContent = append(messageContent, history.ContentBlock{
 			Type: "text",
 			Text: message.GetContent(),
@@ -242,13 +251,13 @@ func (u *UseCase) execute(sessionCtx context.Context, channel, threadTs, prompt 
 			Content: toolResults,
 		})
 		// Make another call to get Claude's response to the tool results
-		return u.execute(sessionCtx, channel, threadTs, "", messages)
+		return u.execute(sessionCtx, user, channel, threadTs, "", messages)
 	}
 	return nil
 }
 
 // postMessage posts a message to the Slack channel and returns the message ID.
-func (u *UseCase) postMessage(ctx context.Context, channel, message, threadTs string) (string, error) {
+func (u *UseCase) postMessage(ctx context.Context, user, channel, message, threadTs string) (string, error) {
 	slog.Info("BEGIN UseCase.postMessage", slog.String("channel", channel), slog.String("message", message), slog.String("threadTs", threadTs))
 	defer slog.Info("END UseCase.postMessage", slog.String("channel", channel))
 	ctx, cancel := context.WithTimeout(ctx, u.timeoutNs)
@@ -256,13 +265,13 @@ func (u *UseCase) postMessage(ctx context.Context, channel, message, threadTs st
 	_, v, err := u.slackClient.PostMessageContext(
 		ctx,
 		channel,
-		slack.MsgOptionText(message, false),
+		slack.MsgOptionText(fmt.Sprintf("<@%s> \n%s", user, message), false),
 		slack.MsgOptionTS(threadTs))
 	return v, err
 }
 
 // updateMessage updates a message in the Slack channel and returns the message ID.
-func (u *UseCase) updateMessage(ctx context.Context, channel, messageID, message string) (string, error) {
+func (u *UseCase) updateMessage(ctx context.Context, user, channel, messageID, message string) (string, error) {
 	slog.Info("BEGIN UseCase.updateMessage", slog.String("channel", channel), slog.String("messageID", messageID), slog.String("message", message))
 	defer slog.Info("END UseCase.updateMessage", slog.String("channel", channel))
 	ctx, cancel := context.WithTimeout(ctx, u.timeoutNs)
@@ -271,6 +280,6 @@ func (u *UseCase) updateMessage(ctx context.Context, channel, messageID, message
 		ctx,
 		channel,
 		messageID,
-		slack.MsgOptionText(message, false))
+		slack.MsgOptionText(fmt.Sprintf("<@%s> \n%s", user, message), false))
 	return v, err
 }

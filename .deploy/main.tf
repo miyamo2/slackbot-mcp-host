@@ -41,7 +41,7 @@ module "docker" {
   host        = module.gar.host
   credentials = module.gar.credentials
   registry    = module.gar.registry
-  bundle     = var.bundle
+  bundle      = var.bundle
   config = {
     mcpServers        = var.mcpServers
     timeoutNs         = var.timeoutNs
@@ -53,6 +53,7 @@ module "docker" {
     slackSigninSecret = sensitive(var.slackSigninSecret)
     allowedUsers      = sensitive(var.allowedUsers)
     gcpProjectID      = var.gcpProjectID
+    rateLimit         = var.rateLimit
   }
 }
 

@@ -25,5 +25,11 @@
   ],
   "gcpProjectID": "<GCPProjectID>",
   "gcpProjectNumber": "<GCPProjectNumber>",
-  "gcpRegion": "<GCPRegion>"
+  "gcpRegion": "<GCPRegion>",
+  "rateLimit": {
+    "enable": true,
+    "limit": 10,
+    "burst": 30,
+    "expiresIn": 300 // seconds
+  }
 }
