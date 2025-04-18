@@ -25,6 +25,7 @@ var (
 type SlackClient interface {
 	PostMessageContext(ctx context.Context, channelID string, options ...slack.MsgOption) (string, string, error)
 	UpdateMessageContext(ctx context.Context, channelID, timestamp string, options ...slack.MsgOption) (string, string, string, error)
+	DeleteMessageContext(ctx context.Context, channel, messageTimestamp string) (string, string, error)
 }
 
 // UseCase represents the use-case for handling Slack messages and LLM interactions.
@@ -144,6 +145,9 @@ func (u *UseCase) execute(sessionCtx context.Context, user, channel, threadTs, p
 			Type: "text",
 			Text: message.GetContent(),
 		})
+	} else {
+		// If the content is empty, delete the temporary message
+		u.slackClient.DeleteMessageContext(sessionCtx, channel, messageID)
 	}
 
 	// Handle tool calls
