@@ -3,14 +3,15 @@ package interfaces
 import (
 	"context"
 	"fmt"
-	"github.com/goccy/go-json"
-	"github.com/labstack/echo/v4"
-	"github.com/slack-go/slack/slackevents"
 	"io"
 	"log/slog"
 	"net/http"
 	"strings"
 	"unicode"
+
+	"github.com/goccy/go-json"
+	"github.com/labstack/echo/v4"
+	"github.com/slack-go/slack/slackevents"
 )
 
 // UseCase represents the use-case for handling Slack messages and LLM interactions.
@@ -55,7 +56,11 @@ func NewHandler(
 						return
 					}
 					session, _ := untypedSession.(*Session)
-					errCh := make(chan error)
+					errCh := make(chan error, 1)
+
+					defer close(errCh)
+					defer session.cancel()
+					defer sessions.Delete(sessionKey(innerEvent.Channel, innerEvent.TimeStamp, innerEvent.User))
 
 					user := session.user
 					slog.Info("request received", slog.String("user_id", user.ID), slog.String("event", fmt.Sprintf("%+v", innerEvent)))
@@ -67,17 +72,12 @@ func NewHandler(
 						if err := <-errCh; err != nil {
 							slog.Error("failed to execute", slog.String("error", err.Error()))
 						}
-						close(errCh)
-						session.cancel()
-						sessions.Delete(sessionKey(innerEvent.Channel, innerEvent.TimeStamp, innerEvent.User))
 						return
 					case <-session.ctx.Done():
 						slog.Info("session done")
 						if err := session.ctx.Err(); err != nil {
 							slog.Error(err.Error())
 						}
-						close(errCh)
-						sessions.Delete(sessionKey(innerEvent.Channel, innerEvent.TimeStamp, innerEvent.User))
 						return
 					}
 				}()
