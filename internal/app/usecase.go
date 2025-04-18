@@ -3,6 +3,10 @@ package app
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"strings"
+	"time"
+
 	"github.com/avast/retry-go"
 	"github.com/goccy/go-json"
 	"github.com/mark3labs/mcp-go/client"
@@ -11,9 +15,6 @@ import (
 	"github.com/mark3labs/mcphost/pkg/llm"
 	"github.com/pkg/errors"
 	"github.com/slack-go/slack"
-	"log/slog"
-	"strings"
-	"time"
 )
 
 var (
@@ -55,6 +56,7 @@ func NewUseCase(
 // Execute handles LLM interactions and Slack message updates.
 //
 //   - sessionCtx: context representing the session for the operation.
+//   - user: The Slack user ID who mentions the bot.
 //   - channel: The Slack channel ID where the message will be posted.
 //   - threadTs: The timestamp of the thread to reply to.
 //   - prompt: The prompt to send to the LLM.
