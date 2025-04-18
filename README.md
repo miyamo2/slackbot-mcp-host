@@ -25,7 +25,7 @@ MCP Host as a Slack Bot
 
 ```json
 {
-  "mcpServers": { ... },
+  "mcpServers": {...},
   "bundle": {
     "go": {
       "packages": [
