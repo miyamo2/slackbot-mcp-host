@@ -99,10 +99,8 @@ gcloud services enable iam.googleapis.com run.googleapis.com artifactregistry.go
 ```json5
 {
   "mcpServers": {
-    "mcpServers": {
-      "mcp-restaurant-order": {
-        "command": "mcp-restaurant-order"
-      }
+    "mcp-restaurant-order": {
+      "command": "mcp-restaurant-order"
     },
     "fetch": {
       "command": "mcp-server-fetch"
