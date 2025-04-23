@@ -225,7 +225,7 @@ func (u *UseCase) execute(sessionCtx context.Context, user, channel, threadTs, p
 			continue
 		}
 
-		if toolResult.Content != nil {
+		if len(toolResult.Content) != 0 {
 			// Create the tool result block
 			resultBlock := history.ContentBlock{
 				Type:      "tool_result",
