@@ -284,11 +284,11 @@ func llmProviderFromConfig(ctx context.Context, cfg Config) (llm.Provider, error
 	slog.DebugContext(ctx, "llmProviderFromConfig", slog.String("provider", cfg.LLMProviderName), slog.String("baseURL", cfg.LLMBaseURL), slog.String("modelName", cfg.LLMModelName))
 	switch cfg.LLMProviderName {
 	case llmProviderAnthropic:
-		return anthropic.NewProvider(cfg.LLMApiKey, cfg.LLMBaseURL, cfg.LLMModelName), nil
+		return anthropic.NewProvider(cfg.LLMApiKey, cfg.LLMBaseURL, cfg.LLMModelName, ""), nil
 	case llmProviderOpenAI:
-		return openai.NewProvider(cfg.LLMApiKey, cfg.LLMBaseURL, cfg.LLMModelName), nil
+		return openai.NewProvider(cfg.LLMApiKey, cfg.LLMBaseURL, cfg.LLMModelName, ""), nil
 	case llmProviderGoogle:
-		return google.NewProvider(ctx, cfg.LLMApiKey, cfg.LLMModelName)
+		return google.NewProvider(ctx, cfg.LLMApiKey, cfg.LLMModelName, "")
 	default:
 		return nil, fmt.Errorf("unsupported LLM provider: %s", cfg.LLMProviderName)
 	}
