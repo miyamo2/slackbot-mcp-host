@@ -99,8 +99,11 @@ gcloud services enable iam.googleapis.com run.googleapis.com artifactregistry.go
 ```json5
 {
   "mcpServers": {
-    "mcp-restaurant-order": {
-      "command": "mcp-restaurant-order"
+    "hotpepper-gourmet-mcp-server": {
+      "command": "hotpepper-gourmet-mcp-server",
+      "env": {
+        "HOTPEPPER_GOURMET_API_KEY": "<HOTPEPPER Gourmet API Key>"
+      }
     },
     "fetch": {
       "command": "mcp-server-fetch"
@@ -115,7 +118,7 @@ gcloud services enable iam.googleapis.com run.googleapis.com artifactregistry.go
   "bundle": {
     "go": {
       "packages": [
-        "github.com/miyamo2/mcp-restaurant-order@latest"
+        "github.com/miyamo2/hotpepper-gourmet-mcp-server@latest"
       ]
     },
     "uv": {
