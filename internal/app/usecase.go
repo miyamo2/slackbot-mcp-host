@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -134,14 +135,14 @@ func (u *UseCase) execute(sessionCtx context.Context, user, channel, threadTs, p
 	}
 
 	var (
-		messageContent []history.ContentBlock
-		toolResults    []history.ContentBlock
+		messageContents []history.ContentBlock
+		toolResults     []history.ContentBlock
 	)
 
 	// Add text content
 	if message.GetContent() != "" {
 		messageID, err = u.updateMessage(sessionCtx, user, channel, messageID, message.GetContent())
-		messageContent = append(messageContent, history.ContentBlock{
+		messageContents = append(messageContents, history.ContentBlock{
 			Type: "text",
 			Text: message.GetContent(),
 		})
@@ -152,105 +153,18 @@ func (u *UseCase) execute(sessionCtx context.Context, user, channel, threadTs, p
 
 	// Handle tool calls
 	for _, toolCall := range message.GetToolCalls() {
-		slog.Info("Using tool", slog.String("tool_name", toolCall.GetName()))
-
-		input, err := json.Marshal(toolCall.GetArguments())
-		if err != nil {
-			slog.Warn("failed to marshal tool arguments", slog.String("error", err.Error()))
-			continue
+		messageContent, toolResult := u.handleToolCall(sessionCtx, toolCall, message)
+		if len(messageContent) > 0 {
+			messageContents = slices.Concat(messageContents, messageContent)
 		}
-		messageContent = append(messageContent, history.ContentBlock{
-			Type:  "tool_use",
-			ID:    toolCall.GetID(),
-			Name:  toolCall.GetName(),
-			Input: input,
-		})
-
-		// Log usage statistics if available
-		inputTokens, outputTokens := message.GetUsage()
-		if inputTokens > 0 || outputTokens > 0 {
-			slog.Info("Usage statistics",
-				slog.Int("input_tokens", inputTokens),
-				slog.Int("output_tokens", outputTokens),
-				slog.Int("total_tokens", inputTokens+outputTokens))
-		}
-
-		parts := strings.Split(toolCall.GetName(), "__")
-		if len(parts) != 2 {
-			slog.Warn("invalid tool name format", slog.String("tool_name", toolCall.GetName()))
-			continue
-		}
-
-		serverName, toolName := parts[0], parts[1]
-		mcpClient, ok := u.mcpClients[serverName]
-		if !ok {
-			slog.Warn("server not found", slog.String("server_name", serverName))
-			continue
-		}
-
-		var toolArgs map[string]any
-		if err := json.Unmarshal(input, &toolArgs); err != nil {
-			slog.Warn("failed to unmarshal tool arguments", slog.String("error", err.Error()))
-			continue
-		}
-
-		req := mcp.CallToolRequest{}
-		req.Params.Name = toolName
-		req.Params.Arguments = toolArgs
-
-		toolResult, err := func() (*mcp.CallToolResult, error) {
-			ctx, cancel := context.WithTimeout(sessionCtx, u.timeoutNs)
-			defer cancel()
-			return mcpClient.CallTool(
-				ctx,
-				req,
-			)
-		}()
-
-		if err != nil {
-			errMsg := fmt.Sprintf(
-				"Error calling tool %s: %v",
-				toolName,
-				err,
-			)
-			// Add error message as tool result
-			toolResults = append(toolResults, history.ContentBlock{
-				Type:      "tool_result",
-				ToolUseID: toolCall.GetID(),
-				Content: []history.ContentBlock{{
-					Type: "text",
-					Text: errMsg,
-				}},
-			})
-			continue
-		}
-
-		if len(toolResult.Content) != 0 {
-			// Create the tool result block
-			resultBlock := history.ContentBlock{
-				Type:      "tool_result",
-				ToolUseID: toolCall.GetID(),
-				Content:   toolResult.Content,
-			}
-
-			// Extract text content
-			var resultText string
-			// Handle array content directly since we know it's []interface{}
-			for _, item := range toolResult.Content {
-				if contentMap, ok := any(item).(map[string]any); ok {
-					if text, ok := contentMap["text"]; ok {
-						resultText += fmt.Sprintf("%v ", text)
-					}
-				}
-			}
-			resultBlock.Text = strings.TrimSpace(resultText)
-			toolResults = append(toolResults, resultBlock)
+		if len(toolResult) > 0 {
+			toolResults = slices.Concat(toolResults, toolResult)
 		}
 	}
 
 	messages = append(messages, history.HistoryMessage{
 		Role:    message.GetRole(),
-		Content: messageContent,
+		Content: messageContents,
 	})
 	if len(toolResults) > 0 {
 		for _, toolResult := range toolResults {
@@ -291,4 +205,103 @@ func (u *UseCase) updateMessage(ctx context.Context, user, channel, messageID, m
 		messageID,
 		slack.MsgOptionText(fmt.Sprintf("<@%s> \n%s", user, message), false))
 	return v, err
+}
+
+// handleToolCall handles the tool call and returns the message content and tool results.
+func (u *UseCase) handleToolCall(sessionCtx context.Context, toolCall llm.ToolCall, message llm.Message) (messageContent []history.ContentBlock, toolResults []history.ContentBlock) {
+	slog.Info("Using tool", slog.String("tool_name", toolCall.GetName()))
+
+	input, err := json.Marshal(toolCall.GetArguments())
+	if err != nil {
+		slog.Warn("failed to marshal tool arguments", slog.String("error", err.Error()))
+		return
+	}
+	messageContent = append(messageContent, history.ContentBlock{
+		Type:  "tool_use",
+		ID:    toolCall.GetID(),
+		Name:  toolCall.GetName(),
+		Input: input,
+	})
+
+	// Log usage statistics if available
+	inputTokens, outputTokens := message.GetUsage()
+	if inputTokens > 0 || outputTokens > 0 {
+		slog.Info("Usage statistics",
+			slog.Int("input_tokens", inputTokens),
+			slog.Int("output_tokens", outputTokens),
+			slog.Int("total_tokens", inputTokens+outputTokens))
+	}
+
+	parts := strings.Split(toolCall.GetName(), "__")
+	if len(parts) != 2 {
+		slog.Warn("invalid tool name format", slog.String("tool_name", toolCall.GetName()))
+		return
+	}
+
+	serverName, toolName := parts[0], parts[1]
+	mcpClient, ok := u.mcpClients[serverName]
+	if !ok {
+		slog.Warn("server not found", slog.String("server_name", serverName))
+		return
+	}
+
+	var toolArgs map[string]any
+	if err := json.Unmarshal(input, &toolArgs); err != nil {
+		slog.Warn("failed to unmarshal tool arguments", slog.String("error", err.Error()))
+		return
+	}
+
+	req := mcp.CallToolRequest{}
+	req.Params.Name = toolName
+	req.Params.Arguments = toolArgs
+
+	toolResult, err := func() (*mcp.CallToolResult, error) {
+		ctx, cancel := context.WithTimeout(sessionCtx, u.timeoutNs)
+		defer cancel()
+		return mcpClient.CallTool(
+			ctx,
+			req,
+		)
+	}()
+
+	if err != nil {
+		errMsg := fmt.Sprintf(
+			"Error calling tool %s: %v",
+			toolName,
+			err,
+		)
+		// Add error message as tool result
+		toolResults = append(toolResults, history.ContentBlock{
+			Type:      "tool_result",
+			ToolUseID: toolCall.GetID(),
+			Content: []history.ContentBlock{{
+				Type: "text",
+				Text: errMsg,
+			}},
+		})
+		return
+	}
+
+	if len(toolResult.Content) != 0 {
+		// Create the tool result block
+		resultBlock := history.ContentBlock{
+			Type:      "tool_result",
+			ToolUseID: toolCall.GetID(),
+			Content:   toolResult.Content,
+		}
+
+		// Extract text content
+		var resultText string
+		// Handle array content directly since we know it's []interface{}
+		for _, item := range toolResult.Content {
+			if contentMap, ok := any(item).(map[string]any); ok {
+				if text, ok := contentMap["text"]; ok {
+					resultText = fmt.Sprintf("%s%v ", resultText, text)
+				}
+			}
+		}
+		resultBlock.Text = strings.TrimSpace(resultText)
+		toolResults = append(toolResults, resultBlock)
+	}
+	return
 }
